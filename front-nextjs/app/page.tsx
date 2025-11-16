@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import apiClient from '@/lib/api';
+import apiClient from '../lib/api';
 
 export default function Home() {
   const [data, setData] = useState(null);
