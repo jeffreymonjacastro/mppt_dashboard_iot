@@ -1,8 +1,9 @@
 import asyncio
+import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-MONGO_URI = "mongodb+srv://mongo:123@cluster0.75movzl.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.getenv("MONGO_URI")
 
 
 async def test_mongo_connection():
