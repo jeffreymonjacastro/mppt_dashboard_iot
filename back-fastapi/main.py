@@ -3,6 +3,8 @@ import asyncio
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Dict
+import json
+from bson import ObjectId
 from datetime import datetime, timezone, timedelta
 from os import getenv
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,8 +14,6 @@ from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 
 load_dotenv()
-
-BOGOTA_TZ = timezone(timedelta(hours=-5))
 
 # --- Administrador de Conexiones WebSocket 
 class ConnectionManager:
@@ -71,6 +71,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def hex_to_string(hex_str: str) -> str:
+    """
+    Convierte una cadena hexadecimal a su representación en texto.
+    - **hex_str**: String en formato hexadecimal (ej: "48656C6C6F")
+    - **return**: String decodificado (ej: "Hello")
+    """
+    try:
+        result = ""
+        for i in range(0, len(hex_str), 2):
+            hex_pair = hex_str[i:i+2]
+            result += chr(int(hex_pair, 16))
+        return result
+    except (ValueError, TypeError):
+        return ""
+
+def parse_lora_data(raw_data: str) -> Dict:
+    """
+    Parsea datos LoRa con formato: +EVT:RXP2P:POT:SNR:PAYLOAD
+    - **raw_data**: String en formato LoRa
+    - **return**: Dict con POT, SNR, PAYLOAD parseados
+    """
+    try:
+        if not raw_data.startswith("+EVT:RXP2P:"):
+            return None
+        
+        data_part = raw_data.replace("+EVT:RXP2P:", "")
+        
+        parts = data_part.split(":")
+        
+        if len(parts) >= 3:
+            return {
+                "POT": parts[0],
+                "SNR": parts[1],
+                "PAYLOAD": hex_to_string(parts[2])
+            }
+        return None
+    except Exception as e:
+        print(f"Error al parsear datos LoRa: {e}")
+        return None
+
 @app.get(
         "/health", 
         tags=["Utilidad"], 
@@ -78,6 +118,7 @@ app.add_middleware(
 )
 async def health_check():
     """Endpoint simple para verificar que la API está corriendo correctamente."""
+
     return {"status": "ok"}
 
 @app.post(
@@ -87,26 +128,67 @@ async def health_check():
 )
 async def receive_lora_data(data: Dict, request: Request):
     """
-    Recibe datos LoRa en formato JSON, los almacena en MongoDB y los transmite a los clientes WebSocket conectados.
-    - **data**: JSON con la clave `raw_data` (string)
+    Recibe datos LoRa en formato JSON, parsea los datos y los almacena en MongoDB.
+    - **data**: JSON con la clave `raw_data` (string en formato +EVT:RXP2P:POT:SNR:PAYLOAD)
     """
     linea = data.get("raw_data")
-    if linea:
-        print(f"Dato recibido: {linea}")
+    if not linea:
+        return {"status": "error", "mensaje": "No 'raw_data' key found"}
+    
+    print(f"Dato recibido: {linea}")
+    
+    parsed_data = parse_lora_data(linea)
+    
+    if parsed_data:
+        structured_data = {
+            "POT": parsed_data["POT"],
+            "SNR": parsed_data["SNR"],
+            "PAYLOAD": parsed_data["PAYLOAD"],
+            "timestamp": data.get("timestamp"),
+            "raw_data": linea  
+        }
+        
+        print(f"Dato parseado: {structured_data}")
+        
+        # Guardar en MongoDB
+        # try:
+        #     collection = request.app.state.db["lecturas"]
+        #     await collection.insert_one(structured_data)
+        #     print("--- Dato guardado en MongoDB ---")
+        # except Exception as e:
+        #     print(f"!!! Error al guardar en MongoDB: {e}")
+        
+        for key, value in structured_data.items():
+            if isinstance(value, ObjectId):
+                structured_data[key] = str(value)
+        await manager.broadcast(json.dumps(structured_data))
+        
+        return {
+            "status": "ok", 
+            "dato_recibido": linea,
+            "dato_parseado": structured_data
+        }
+    else:
+        print(f"No se pudo parsear el dato, guardando raw_data")
+        fallback_data = {
+            "raw_data": linea,
+            "timestamp": data.get("timestamp")
+        }
+        
         try:
             collection = request.app.state.db["lecturas"]
-            documento = {
-                "raw_data": linea,
-                "timestamp": datetime.now(BOGOTA_TZ)
-            }
-            await collection.insert_one(documento)
-            print("--- Dato guardado en MongoDB ---")
+            await collection.insert_one(fallback_data)
+            print("--- Dato raw guardado en MongoDB ---")
         except Exception as e:
             print(f"!!! Error al guardar en MongoDB: {e}")
-        await manager.broadcast(linea)
-        return {"status": "ok", "dato_recibido": linea}
-    else:
-        return {"status": "error", "mensaje": "No 'raw_data' key found"}
+        
+        await manager.broadcast(json.dumps(fallback_data))
+        
+        return {
+            "status": "ok", 
+            "dato_recibido": linea,
+            "warning": "Datos no parseados, formato no reconocido"
+        }
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -147,7 +229,7 @@ async def get_lecturas(
     - **skip**: cantidad de lecturas a omitir (para paginación)
     - **limit**: máximo de lecturas a retornar
     """
-    now = datetime.now(BOGOTA_TZ)
+    now = datetime.now()
     if params.unit == 'min':
         delta = timedelta(minutes=params.time)
     elif params.unit == 'hour':
