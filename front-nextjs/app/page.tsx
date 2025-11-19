@@ -6,18 +6,15 @@ import apiClient from '@/lib/api';
 export default function Home() {
   const [data, setData] = useState(null);
 
-  async function fetchData() {
-    try {
-      const res = await apiClient.get('/hello/jamcy');
-
-      setData(res.data);
-
-    } catch (error) {
-      console.error("Error al obtener los datos:", error);
-    }
-  }
-
   useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await apiClient.get('/health');
+        setData(res.data);
+      } catch (error) {
+        console.error("Error al obtener los datos:", error);
+      }
+    }
     fetchData();
   }, []);
 

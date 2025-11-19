@@ -2,9 +2,13 @@ import asyncio
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
+from dotenv import load_dotenv
+load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
 
+if not MONGO_URI:
+    raise RuntimeError("MONGO_URI no está definida en el entorno.")
 
 async def test_mongo_connection():
     print(f"Intentando conectar a: {MONGO_URI.split('@')[-1]}")

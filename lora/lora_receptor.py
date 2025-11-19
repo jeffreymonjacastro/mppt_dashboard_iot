@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-PORT = 'COM6'  
+PORT = 'COM9'  
 BAUD_RATE = 115200
 
 FREQ_GRUPO = "923500000"
@@ -76,7 +76,7 @@ while True:
                     f.flush() 
 
                     try:
-                        requests.post(BACKEND_URL, json={"raw_data": linea}, timeout=5)
+                        requests.post(f"{BACKEND_URL}/api/lora-data", json={"raw_data": linea}, timeout=5)
                     except requests.exceptions.RequestException as e:
                         print(f"!!! Error al enviar a la API: {e}")
 
