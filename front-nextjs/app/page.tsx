@@ -9,7 +9,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await apiClient.get('/health');
+        const res = await apiClient.get('/basic/health');
         setData(res.data);
       } catch (error) {
         console.error("Error al obtener los datos:", error);

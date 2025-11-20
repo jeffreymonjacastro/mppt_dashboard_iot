@@ -26,16 +26,7 @@ export default function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
   const [totalReceived, setTotalReceived] = useState(0);
   const wsRef = useRef<WebSocket | null>(null);
-  const listEndRef = useRef<HTMLDivElement>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const scrollToBottom = () => {
-    listEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [lecturas]);
 
   useEffect(() => {
     const connectWebSocket = () => {
@@ -206,7 +197,6 @@ export default function Dashboard() {
                   {lectura}
                 </li>
               ))}
-              <div ref={listEndRef} />
             </ul>
           )}
         </div>

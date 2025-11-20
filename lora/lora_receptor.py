@@ -81,7 +81,7 @@ while True:
                     }
 
                     try:
-                        requests.post(f"{BACKEND_URL}/api/lora-data", json=json_data, timeout=5)
+                        requests.post(f"{BACKEND_URL}/api/v1/lora-data", json=json_data, timeout=5)
                     except requests.exceptions.RequestException as e:
                         print(f"!!! Error al enviar a la API: {e}")
 

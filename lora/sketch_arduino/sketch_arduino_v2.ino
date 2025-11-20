@@ -82,10 +82,10 @@ void loop() {
   
   valx = analogRead(VRX_PIN);
   valy = analogRead(VRY_PIN);
-  valsw = analogRead(SW_PIN) == LOW;
+  valsw = digitalRead(SW_PIN) == LOW;
 
-  hexValx = stringToHex(String(valx));
-  hexValy = stringToHex(String(valy));
+  hexValx = stringToHex(String(valx) + " ");
+  hexValy = stringToHex(String(valy) + " ");
   hexValsw = stringToHex(String(valsw));
 
   message = hexValx + hexValy + hexValsw;

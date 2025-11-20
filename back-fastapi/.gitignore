@@ -1,0 +1,14 @@
+# Directorios de entornos virtuales
+venv/
+.venv/
+env/
+
+# Archivos de variables de entorno y configuración local
+.env
+.flaskenv
+.vscode/
+
+# Logs y otros archivos de build
+*.log
+__pycache__/
+*.pyc
