@@ -7,16 +7,18 @@ const MAX_LECTURAS = 200; // Límite de lecturas en pantalla
 const MAX_CHART_POINTS = 10; // Límite de puntos en la gráfica
 
 interface LoRaData {
-  POT?: string;
-  SNR?: string;
-  PAYLOAD?: string;
+  duty?: number | string;
+  voltage?: number | string;
+  current?: number | string;
+  pot?: number | string;
+  snr?: number | string;
   timestamp?: string;
-  raw_data?: string;
 }
 
 interface ChartDataPoint {
-  time: string;
-  POT: number;
+  duty: number;
+  voltage: number;
+  current: number;
   timestamp: string;
 }
 
@@ -47,7 +49,6 @@ export default function Dashboard() {
         try {
           const parsedData: LoRaData = JSON.parse(event.data);
 
-          // Actualizar lista de lecturas
           setLecturas((prev) => {
             const newLecturas = [...prev, event.data];
             if (newLecturas.length > MAX_LECTURAS) {
@@ -56,24 +57,20 @@ export default function Dashboard() {
             return newLecturas;
           });
 
-          // Actualizar datos de la gráfica si tiene POT
-          if (parsedData.POT && parsedData.timestamp) {
-            const potValue = parseFloat(parsedData.POT);
-            if (!isNaN(potValue)) {
-              const timeStr = new Date(parsedData.timestamp).toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              });
+          if (parsedData.duty !== undefined && parsedData.voltage !== undefined && parsedData.current !== undefined && parsedData.timestamp) {
+            const dutyVal = Number(parsedData.duty);
+            const voltageVal = Number(parsedData.voltage);
+            const currentVal = Number(parsedData.current);
 
+            if (!isNaN(dutyVal) && !isNaN(voltageVal) && !isNaN(currentVal)) {
               setChartData((prev) => {
                 const newData = [...prev, {
-                  time: timeStr,
-                  POT: potValue,
+                  duty: dutyVal,
+                  voltage: voltageVal,
+                  current: currentVal,
                   timestamp: parsedData.timestamp!
                 }];
 
-                // Mantener solo los últimos MAX_CHART_POINTS puntos
                 if (newData.length > MAX_CHART_POINTS) {
                   return newData.slice(-MAX_CHART_POINTS);
                 }
@@ -83,7 +80,6 @@ export default function Dashboard() {
           }
         } catch (error) {
           console.error('Error al parsear datos:', error);
-          // Si no se puede parsear como JSON, agregarlo como string
           setLecturas((prev) => {
             const newLecturas = [...prev, event.data];
             if (newLecturas.length > MAX_LECTURAS) {
@@ -140,27 +136,25 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Gráfica POT vs Tiempo */}
+        {/* Gráfica Voltage/Current vs Duty */}
         <div className="mb-6 border rounded-lg p-4 bg-white">
-          <h3 className="font-semibold mb-4 text-lg">Potencia (POT) vs Tiempo</h3>
+          <h3 className="font-semibold mb-4 text-lg">Voltage y Current vs Duty</h3>
           {chartData.length === 0 ? (
             <div className="h-64 flex items-center justify-center text-gray-500 italic">
               Esperando datos para la gráfica...
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
+              <LineChart data={[...chartData].sort((a, b) => a.duty - b.duty)}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
-                  dataKey="time"
-                  tick={{ fontSize: 12 }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
+                  dataKey="duty"
+                  type="number"
+                  label={{ value: 'Duty', position: 'insideBottomRight', offset: -5 }}
+                  domain={['auto', 'auto']}
                 />
                 <YAxis
-                  label={{ value: 'POT (dBm)', angle: -90, position: 'insideLeft' }}
-                  tick={{ fontSize: 12 }}
+                  label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc' }}
@@ -169,12 +163,19 @@ export default function Dashboard() {
                 <Legend />
                 <Line
                   type="monotone"
-                  dataKey="POT"
+                  dataKey="voltage"
                   stroke="#8884d8"
                   strokeWidth={2}
                   dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                  name="Potencia (dBm)"
+                  name="Voltage (V)"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="current"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  name="Current (A)"
                 />
               </LineChart>
             </ResponsiveContainer>
