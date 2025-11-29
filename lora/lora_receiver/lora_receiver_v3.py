@@ -119,11 +119,11 @@ while True:
                         }
 
                         # Enviar a la API
-                        # if BACKEND_URL:
-                        #     try:
-                        #         requests.post(f"{BACKEND_URL}/api/v1/lora-data", json=json_data, timeout=2)
-                        #     except requests.exceptions.RequestException as e:
-                        #         print(f"   [!] Error API: {e}")
+                        if BACKEND_URL:
+                            try:
+                                requests.post(f"{BACKEND_URL}/api/v1/lora-data", json=json_data, timeout=2)
+                            except requests.exceptions.RequestException as e:
+                                print(f"   [!] Error API: {e}")
                     
     except serial.SerialException as e:
         print(f"\nError Serial: {e}")
